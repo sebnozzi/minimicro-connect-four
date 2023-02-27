@@ -15,6 +15,7 @@ jobs:
       minidisk_additional_entries: >-
         altSequence.ms
         solutions.ms
+        animation.ms
       custom_executable_name: ConnectFour
       itch_io_username: sebnozzi
       itch_io_game_id: connect-four
