@@ -3,6 +3,8 @@
 import "animation"
 import "solutions"
 import "altSequence"
+
+Player = {}		// (must be defined before we import ai)
 import "ai"
 
 Animation = animation.Animation
@@ -280,7 +282,6 @@ end function
 
 // == Players
 
-Player = {}
 Player.name = null
 Player.tint = null
 
