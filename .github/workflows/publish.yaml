@@ -1,0 +1,22 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+
+  publish:
+    uses: sebnozzi/minimicro-actions/.github/workflows/itch-deploy.yaml@feature/webgl-1.2-p2
+    with:
+      minidisk_main_file: game.ms
+      minidisk_additional_entries: >-
+        altSequence.ms
+        solutions.ms
+      custom_executable_name: ConnectFour
+      itch_io_username: sebnozzi
+      itch_io_game_id: connect-four
+    secrets:
+      itch_io_api_key: ${{ secrets.ITCH_IO_API_KEY }}
