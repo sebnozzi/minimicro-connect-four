@@ -216,14 +216,14 @@ Board.removePiece = function(colNr,rowNr)
 end function
 
 Board.movePiece = function(piece,col,row)
-	m = new PieceMovement
 	coords = self.positionCoordinates(col,row)
-	m.init piece,coords.x,coords.y
+	m = newPieceMovement(piece,coords.x,coords.y)
+	
 	board = self
-	doneFun = function
+	m.onDone = function
 		board.setPiece piece,col,row
 	end function
-	m.onDone = doneFun
+	
 	dropSnd.play
 	m.move
 end function
@@ -238,23 +238,7 @@ Board.positionCoordinates = function(col,row)
 	return absoluteCoords
 end function
 
-Board.moveToFront = function
-	idx = sprd.sprites.indexOf(self)
-	sprd.sprites.remove(idx)
-	sprd.sprites.push self
-end function
-
 // == PIECE
-
-newYellowPiece = function
-	p = newPiece(YellowPlayer)
-	return p
-end function
-
-newRedPiece = function
-	p = newPiece(RedPlayer)
-	return p
-end function
 
 newPiece = function(player)
 	p = new Piece
@@ -266,6 +250,7 @@ newPiece = function(player)
 end function
 
 Piece = new Sprite
+
 Piece.init = function
 	self.image = generatePieceImage
 	self.x = 100
@@ -372,7 +357,14 @@ end function
 
 // == ANIMATION
 
+newPieceMovement = function(piece,endX,endY)
+	pm = new PieceMovement
+	pm.init piece,endX,endY
+	return pm
+end function
+
 PieceMovement = {}
+
 PieceMovement.init = function(piece,endX,endY)
 	self.animation = new Animation
 	deltaX = abs(endX - piece.x)
@@ -381,6 +373,7 @@ PieceMovement.init = function(piece,endX,endY)
 	duration = 0.05 * (delta / (discSize + marginSize))
 	self.animation.init piece,endX,endY,duration
 end function
+
 PieceMovement.move = function
 	while self.animation.isRunning
 		self.animation.update
@@ -388,6 +381,7 @@ PieceMovement.move = function
 	end while
 	self.onDone
 end function
+
 PieceMovement.onDone = function
 	// REPLACE
 end function
@@ -478,50 +472,61 @@ max = function(a,b)
 	if a > b then return a else return b
 end function
 
-// == DROP DEMO
+// == DEMO
 
-dropDemo = function
+autoPlayDemo = function
 	
 	Board.init
-	players = [RedPlayer, YellowPlayer]
+	DroppingArea.init
 	
-	playerIdx = 0
-	solved = false
+	players = newAlternatingSequence([RedPlayer, YellowPlayer])
 	
-	while not Board.isFull
-		player = players[playerIdx]
-		playerIdx = (playerIdx + 1) % 2
+	while true
 		
-		colNr = 1 + floor(rnd * 7)
+		Board.reset
+		resetDisplays
 		
-		rowNr = Board.freeRowAtColumn(colNr)
-		if rowNr == null then continue
+		solved = false
 		
-		piece = player.newPiece
+		while not Board.isFull
+			player = players.next
+			
+			colNr = 1 + floor(rnd * 7)
+			
+			rowNr = Board.freeRowAtColumn(colNr)
+			if rowNr == null then continue
+			
+			piece = player.newPiece
+			
+			piece.moveToDroppingArea colNr
+			
+			wait 0.2		
+			
+			Board.movePiece piece,colNr,rowNr
+			
+			if Board.isSolvedByPiece(piece) then
+				solvingPieces = Board.findSolvingPieces(piece)
+				drawSolutionLine solvingPieces
+				solved = true
+				break
+			end if
+			
+		end while
 		
-		piece.moveToDroppingArea colNr
-		
-		wait 0.2		
-		
-		Board.movePiece piece,colNr,rowNr
-		
-		if Board.isSolvedByPiece(piece) then
-			solvingPieces = Board.findSolvingPieces(piece)
-			drawSolutionLine solvingPieces
-			solved = true
-			break
+		if solved then
+			print "Solved!"
+			print player.name + " wins!"
+			playerWonSnd.play
+		else
+			print "Board full. Game over."
 		end if
 		
+		wait 2
 	end while
-	
-	if solved then
-		print "Solved!"
-	else
-		print "Board full. Game over."
-	end if
 	
 end function
 
 // == MAIN INVOCATION
 
+//autoPlayDemo
 main
