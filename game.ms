@@ -323,9 +323,9 @@ DroppingArea.init = function
 		
 		rect = new Bounds
 		rect.x = coords.x
-		rect.y = coords.y + droppingAreaOffset
+		rect.y = displayCenterY
 		rect.width = discSize + marginSize
-		rect.height = discSize + marginSize
+		rect.height = displayHeight
 		
 		self.slots[colNr] = rect
 	end for
