@@ -33,6 +33,8 @@ playerWonSnd = file.loadSound("/sys/sounds/cha-ching.wav")
 
 clear
 
+text.color = color.silver
+
 display(6).mode = displayMode.sprite
 sprd = display(6)
 sprd.clear
@@ -466,6 +468,7 @@ end function
 resetDisplays = function
 	gfx.clear color.clear
 	text.clear
+	text.color = color.silver
 	text.row = 25
 end function
 
