@@ -334,6 +334,7 @@ end function
 DroppingArea.waitUntilDropped = function(piece)
 	piece.moveToDroppingArea 1
 	pieceColNr = 1
+	targetPosition = {}
 	while true
 		// Move piece to slot where mouse is positioned
 		for slot in self.slots
@@ -347,10 +348,17 @@ DroppingArea.waitUntilDropped = function(piece)
 		// When clicked, return target position if column not full
 		if mouse.button and Board.hasFreeRowAtColumn(pieceColNr) then
 			rowNr = Board.freeRowAtColumn(pieceColNr)
-			return {"colNr": pieceColNr, "rowNr": rowNr}
+			targetPosition.colNr = pieceColNr
+			targetPosition.rowNr = rowNr
+			break
 		end if
 		yield
 	end while
+	
+	// Wait until mouse is "up" again
+	while mouse.button; yield; end while
+	
+	return targetPosition
 end function
 
 // == ANIMATION
