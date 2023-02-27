@@ -24,6 +24,11 @@ displayHeight = 640
 displayCenterX = displayWidth / 2
 displayCenterY = displayHeight / 2
 
+// == SOUNDS
+
+dropSnd = file.loadSound("/sys/sounds/swoosh.wav")
+playerWonSnd = file.loadSound("/sys/sounds/cha-ching.wav")
+
 // == DISPLAY SETUP
 
 clear
@@ -76,6 +81,7 @@ main = function
 		end while
 		
 		if solved then
+			playerWonSnd.play
 			print player.name + " player wins!"
 		else
 			print "Board full. Game over."
@@ -216,6 +222,7 @@ Board.movePiece = function(piece,col,row)
 		board.setPiece piece,col,row
 	end function
 	m.onDone = doneFun
+	dropSnd.play
 	m.move
 end function
 
