@@ -3,6 +3,7 @@
 import "animation"
 import "solutions"
 import "altSequence"
+import "ai"
 
 Animation = animation.Animation
 newAlternatingSequence = @altSequence.newAlternatingSequence
@@ -60,9 +61,8 @@ main = function
 			
 			piece = player.newPiece
 			
-			targetPosition = DroppingArea.waitUntilDropped(piece)
-			colNr = targetPosition.colNr
-			rowNr = targetPosition.rowNr
+			colNr = player.selectColumn(piece)
+			rowNr = Board.freeRowAtColumn(colNr)
 			
 			Board.movePiece piece,colNr,rowNr
 			
@@ -300,14 +300,21 @@ Player.newPiece = function
 	return p
 end function
 
+Player.selectColumn = function(piece)
+	return DroppingArea.waitUntilDropped(piece)
+end function
+
 newPlayer = function(name, tint)
 	p = new Player
 	p.init name, tint
 	return p
 end function
 
+
 RedPlayer = newPlayer("Red", color.red)
-YellowPlayer = newPlayer("Yellow", color.yellow)
+//YellowPlayer = newPlayer("Yellow", color.yellow)
+YellowPlayer = new ai.AIPlayer
+YellowPlayer.init "Yellow", color.yellow
 
 // == DROPPING AREA
 
@@ -334,6 +341,7 @@ end function
 DroppingArea.waitUntilDropped = function(piece)
 	piece.moveToDroppingArea 1
 	pieceColNr = 1
+	mouseWasDown = false
 	while true
 		// Move piece to slot where mouse is positioned
 		for slot in self.slots
@@ -345,10 +353,10 @@ DroppingArea.waitUntilDropped = function(piece)
 			end if			
 		end for
 		// When clicked, return target position if column not full
-		if mouse.button and Board.hasFreeRowAtColumn(pieceColNr) then
-			rowNr = Board.freeRowAtColumn(pieceColNr)
-			return {"colNr": pieceColNr, "rowNr": rowNr}
+		if not mouse.button and mouseWasDown and Board.hasFreeRowAtColumn(pieceColNr) then
+			return pieceColNr
 		end if
+		mouseWasDown = mouse.button
 		yield
 	end while
 end function
