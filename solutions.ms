@@ -1,22 +1,16 @@
 
-// Directions
-horizontal = {"col": 1, "row": 0}
-vertical = {"col": 0, "row": 1}
-diagonal_1 = {"col": 1, "row": 1}
-diagonal_2 = {"col": 1, "row": -1}
-
-directions = {
-"horizontal": horizontal, 
-"vertical": vertical, 
-"diagonal_1": diagonal_1, 
-"diagonal_2": diagonal_2}
-
 solutionOffsets = function(runLength = 4)
 	
 	offsets = genericOffsets(runLength)
 	
-	solutions = []
+	directions = {
+	"horizontal": {"col": 1, "row": 0}, 
+	"vertical": {"col": 0, "row": 1}, 
+	"diagonal_1": {"col": 1, "row": 1}, 
+	"diagonal_2": {"col": 1, "row": -1} }
 	
+	solutions = []
+
 	for directionName in directions.indexes
 		direction = directions[directionName]
 		for offsetFactors in offsets

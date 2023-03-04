@@ -2,15 +2,17 @@
 
 import "animation"
 import "solutions"
-import "altSequence"
+import "infSequence"
 
 Animation = animation.Animation
-newAlternatingSequence = @altSequence.newAlternatingSequence
+infiniteSequence = @infSequence.infiniteSequence
 
 // == CONSTANTS
 
 colCount = 7
 rowCount = 6
+// This is what this game is about: connect FOUR ;-)
+solutionLength = 4
 
 discSize = 70
 
@@ -26,8 +28,17 @@ displayCenterY = displayHeight / 2
 
 // == SOUNDS
 
-dropSnd = file.loadSound("/sys/sounds/swoosh.wav")
-playerWonSnd = file.loadSound("/sys/sounds/cha-ching.wav")
+// Load sounds once and cache them to speed-up startup.
+if not globals.hasIndex("_sounds") then
+	print "Loading sounds ..."
+	sounds = {}
+	sounds.swooshWav = file.loadSound("/sys/sounds/swoosh.wav")
+	sounds.chachingWav = file.loadSound("/sys/sounds/cha-ching.wav")
+	globals["_sounds"] = sounds
+end if
+
+dropSnd = _sounds.swooshWav
+playerWonSnd = _sounds.chachingWav
 
 // == DISPLAY SETUP
 
@@ -35,65 +46,72 @@ clear
 
 text.color = color.silver
 
+// We use the default PixelDisplay at slot 5
+display(5).mode = displayMode.pixel
+gfx = display(5)
+
+// We introduce a NEW SpriteDisplay below, at slot 6.
+// This allows us to draw on the pixel-display above 
+// our sprites. Useful e.g. for drawing the "solution line".
 display(6).mode = displayMode.sprite
 sprd = display(6)
 sprd.clear
 
-display(5).mode = displayMode.pixel
-gfx = display(5)
-
 // == MAIN
 
 main = function
+	//interactiveGame
+	autoPlayDemo
+end function
+
+gameLoop = function(chooseDroppingColumn,askYesNoQuestion)
 	
 	Board.init
 	DroppingArea.init
 	
-	players = newAlternatingSequence([RedPlayer, YellowPlayer])
+	players = infiniteSequence([RedPlayer, YellowPlayer])
 	
 	keepPlaying = true
 	
+	// Loop for many games
 	while keepPlaying
 		
 		Board.reset
 		resetDisplays
 		
 		player = null
-		solved = false
 		
-		while not Board.isFull
+		// Loop for one game
+		while Board.isPlayable
 			
 			player = players.next
-			
 			piece = player.newPiece
 			
-			targetPosition = DroppingArea.waitUntilDropped(piece)
-			colNr = targetPosition.colNr
-			rowNr = targetPosition.rowNr
+			colNr = chooseDroppingColumn(piece)
 			
-			Board.movePiece piece,colNr,rowNr
-			
-			if Board.isSolvedByPiece(piece) then
-				solvingPieces = Board.findSolvingPieces(piece)
-				drawSolutionLine solvingPieces
-				solved = true
-				break
-			end if
+			Board.dropPieceIntoColumn piece,colNr
 			
 		end while
 		
-		if solved then
+		if Board.isSolved then
+			drawSolutionLine
 			playerWonSnd.play
 			print player.name + " player wins!"
 		else
 			print "Board full. Game over."
 		end if
 		
-		answer = input("Play again? ")
-		answer = answer.lower
-		keepPlaying = answer.len > 0 and answer[0] == "y"
+		keepPlaying = askYesNoQuestion("Play again? ")
 		
 	end while
+	
+end function
+
+// == INTERACTIVE GAME
+
+interactiveGame = function
+	
+	gameLoop @chooseDroppingColumn, @askYesNoQuestion
 	
 end function
 
@@ -102,6 +120,7 @@ end function
 Board = new Sprite
 
 Board.pieces = null
+Board.solution = null
 
 Board.init = function
 	// Initialize model
@@ -124,6 +143,7 @@ Board.reset = function
 			self.removePiece colNr,rowNr
 		end for
 	end for
+	self.solution = null
 end function
 
 Board.initModel = function
@@ -151,6 +171,14 @@ Board.hasFreeRowAtColumn = function(colNr)
 	return self.freeRowAtColumn(colNr) != null
 end function
 
+Board.isPlayable = function
+	return not (self.isSolved or self.isFull)
+end function
+
+Board.isSolved = function
+	return self.solution != null
+end function
+
 Board.isFull = function
 	for colNr in range(1,colCount)
 		if self.hasFreeRowAtColumn(colNr) then
@@ -162,13 +190,18 @@ end function
 
 Board.isSolvedByPiece = function(startPiece)
 	solvingPieces = self.findSolvingPieces(startPiece)
-	return solvingPieces.len == 4
+	return solvingPieces.len == solutionLength
 end function
 
+// This looks for solutions around a given start-piece, for
+// its player. It returns a list of solving pieces, if any.
 Board.findSolvingPieces = function(startPiece)
 	playerToMatch = startPiece.player
 	
-	solutions = solutions.solutionOffsets(4)
+	// This has a list of offsets to apply to the given
+	// starting piece. The resulting adjacent pieces have
+	// to be of the same player.
+	solutions = solutions.solutionOffsets(solutionLength)
 	
 	for offsets in solutions
 		solvingPieces = []
@@ -176,14 +209,19 @@ Board.findSolvingPieces = function(startPiece)
 			pieceColNr = startPiece.colNr + offset.col
 			pieceRowNr = startPiece.rowNr + offset.row
 			piece = self.getPiece(pieceColNr,pieceRowNr)
+			// Accumulate adjacent pieces of the same player
 			if piece != null and piece.player == playerToMatch then
 				solvingPieces.push piece
 			end if
 		end for
-		if solvingPieces.len == 4 then return solvingPieces
+		// If the accumulated pieces have the sought length
+		// we found a series of pieces that solve the board.
+		if solvingPieces.len == solutionLength then 
+			return solvingPieces
+		end if
 	end for
 	
-	return []
+	return null
 end function
 
 Board.getPiece = function(colNr,rowNr)
@@ -201,6 +239,8 @@ Board.setPiece = function(piece,colNr,rowNr)
 	// Save position into piece
 	piece.colNr = colNr
 	piece.rowNr = rowNr
+	// Compute solution (if any)
+	self.solution = Board.findSolvingPieces(piece)
 end function
 
 Board.hasPiece = function(colNr,rowNr)
@@ -215,7 +255,8 @@ Board.removePiece = function(colNr,rowNr)
 	row[colNr - 1] = null
 end function
 
-Board.movePiece = function(piece,col,row)
+Board.dropPieceIntoColumn = function(piece,col)
+	row = self.freeRowAtColumn(col)
 	coords = self.positionCoordinates(col,row)
 	m = newPieceMovement(piece,coords.x,coords.y)
 	
@@ -325,10 +366,10 @@ DroppingArea.init = function
 	end for
 end function
 
-DroppingArea.waitUntilDropped = function(piece)
+DroppingArea.chooseDroppingColumn = function(piece)
 	piece.moveToDroppingArea 1
 	pieceColNr = 1
-	targetPosition = {}
+	
 	while true
 		// Move piece to slot where mouse is positioned
 		for slot in self.slots
@@ -339,20 +380,18 @@ DroppingArea.waitUntilDropped = function(piece)
 				pieceColNr = slotColNr
 			end if			
 		end for
+		
 		// When clicked, return target position if column not full
 		if mouse.button and Board.hasFreeRowAtColumn(pieceColNr) then
-			rowNr = Board.freeRowAtColumn(pieceColNr)
-			targetPosition.colNr = pieceColNr
-			targetPosition.rowNr = rowNr
-			break
+			// Wait until mouse is "up" again
+			while mouse.button; yield; end while
+			// Return column
+			return pieceColNr
 		end if
+		
 		yield
 	end while
 	
-	// Wait until mouse is "up" again
-	while mouse.button; yield; end while
-	
-	return targetPosition
 end function
 
 // == ANIMATION
@@ -384,6 +423,20 @@ end function
 
 PieceMovement.onDone = function
 	// REPLACE
+end function
+
+// == INTERACTION
+
+chooseDroppingColumn = function(piece)
+	colNr = DroppingArea.chooseDroppingColumn(piece)
+	return colNr
+end function
+
+askYesNoQuestion = function(prompt)
+	answer = input(prompt)
+	answer = answer.lower
+	answerIsYes = answer.len > 0 and answer[0] == "y"
+	return answerIsYes
 end function
 
 // == METRICS
@@ -453,7 +506,8 @@ generatePieceImage = function
 	return img
 end function
 
-drawSolutionLine = function(solvingPieces)
+drawSolutionLine = function
+	solvingPieces = Board.solution
 	first = solvingPieces[0]
 	last = solvingPieces[-1]
 	gfx.line first.x,first.y,last.x,last.y,color.green,20
@@ -472,61 +526,32 @@ max = function(a,b)
 	if a > b then return a else return b
 end function
 
-// == DEMO
+// == AUTOPLAY DEMO
 
 autoPlayDemo = function
 	
-	Board.init
-	DroppingArea.init
-	
-	players = newAlternatingSequence([RedPlayer, YellowPlayer])
-	
-	while true
-		
-		Board.reset
-		resetDisplays
-		
-		solved = false
-		
-		while not Board.isFull
-			player = players.next
-			
+	chooseRandomColumn = function(piece)
+		gfx.fillRect 800,610,960-800,640-610,color.clear
+		gfx.print "Random Mode",800,610,color.gray
+		while true
 			colNr = 1 + floor(rnd * 7)
-			
-			rowNr = Board.freeRowAtColumn(colNr)
-			if rowNr == null then continue
-			
-			piece = player.newPiece
-			
-			piece.moveToDroppingArea colNr
-			
-			wait 0.2		
-			
-			Board.movePiece piece,colNr,rowNr
-			
-			if Board.isSolvedByPiece(piece) then
-				solvingPieces = Board.findSolvingPieces(piece)
-				drawSolutionLine solvingPieces
-				solved = true
-				break
+			if Board.freeRowAtColumn(colNr) then 
+				piece.moveToDroppingArea colNr
+				wait 0.2
+				return colNr
 			end if
-			
 		end while
-		
-		if solved then
-			print "Solved!"
-			print player.name + " wins!"
-			playerWonSnd.play
-		else
-			print "Board full. Game over."
-		end if
-		
+	end function
+	
+	playAgain = function(_prompt)
 		wait 2
-	end while
+		return true
+	end function
+	
+	gameLoop @chooseRandomColumn, @playAgain
 	
 end function
 
 // == MAIN INVOCATION
 
-//autoPlayDemo
 main

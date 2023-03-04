@@ -44,19 +44,20 @@ Animation.init = function(sprite, endX, endY, durationSecs=1)
 end function
 
 Animation.update = function
-	if self.hasTime then
+	if self.hasTimeLeft then
 		elapsedTime = time - self.startTime
 		newX = self.startX + self.deltaX * elapsedTime / self.durationSecs
 		newY = self.startY + self.deltaY * elapsedTime / self.durationSecs
 		self.sprite.x = newX
 		self.sprite.y = newY
 	else
+		// Force end position if time is up
 		self.sprite.x = self.endX
 		self.sprite.y = self.endY
 	end if
 end function
 
-Animation.hasTime = function
+Animation.hasTimeLeft = function
 	return time < self.endTime
 end function
 
@@ -86,7 +87,7 @@ if globals == locals then
 	while true
 		
 		a1 = new Animation
-		a1.init(s, 800, s.y, 2)
+		a1.init s,800,s.y,2
 		
 		while a1.isRunning
 			a1.update
@@ -94,7 +95,7 @@ if globals == locals then
 		end while
 		
 		a2 = new Animation
-		a2.init(s, 20, s.y, 2)
+		a2.init s,20,s.y,2
 		
 		while a2.isRunning
 			a2.update
