@@ -60,8 +60,8 @@ sprd.clear
 // == MAIN
 
 main = function
-	//interactiveGame
-	autoPlayDemo
+	interactiveGame
+	//autoPlayDemo
 end function
 
 gameLoop = function(chooseDroppingColumn,askYesNoQuestion)
