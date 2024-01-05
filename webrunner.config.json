@@ -1,4 +1,10 @@
 {
   "pageTitle": "Connect Four - Mini Micro Web Runner",
-  "mainFile": "game.ms"
+  "mainFile": "game.ms",
+  "sysDisk": {
+    "useOnly": [
+      "/sys/sounds/swoosh.wav",
+      "/sys/sounds/cha-ching.wav"
+    ]
+  }
 }
